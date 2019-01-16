@@ -22,6 +22,7 @@ And therefore I did.
 # Note: This is only if I'm interested ;-)
 
 import copy
+import curses
 import time
 
 
@@ -73,14 +74,13 @@ GOSPER = ((1, 5),
 # Display data
 #
 
-def display_board(board):
-    for row in board:
-        for cell in row:
+def display_board(screen, board):
+    screen.clear()
+    for row_idx, row in enumerate(board):
+        for cell_idx, cell in enumerate(row):
             if cell:
-                print('#', end='')
-            else:
-                print(' ', end='')
-        print()
+                screen.addstr(row_idx, cell_idx, ' ', curses.A_REVERSE)
+    screen.refresh()
 
 
 #
@@ -165,31 +165,45 @@ def check_new_life(center, board, checked_cells):
     return babies, barren
 
 
-board = populate_data((38, 22), GOSPER)
 
-#
-# cycle data
-#
-while True:
-    display_board(board)
-    time.sleep(0.1)
-    checked_cells = set()
-    next_board = copy.deepcopy(board)
+def main(stdscr):
 
-    for row_idx, row in enumerate(board):
-        for cell_idx, cell in enumerate(row):
-            if cell:
-                if check_will_die((cell_idx, row_idx), board):
-                    next_board[row_idx][cell_idx] = False
-                checked_cells.add((cell_idx, row_idx))
+    curses.curs_set(0)
+    stdscr.nodelay(True)
 
-                babies, barren = check_new_life((cell_idx, row_idx), board, checked_cells)
-                checked_cells.update(babies)
-                checked_cells.update(barren)
+    max_y, max_x = stdscr.getmaxyx()
+    board = populate_data((max_x, max_y), GOSPER)
 
-                for x, y in babies:
-                    next_board[y][x] = True
-    board = next_board
+    #
+    # cycle data
+    #
+    while True:
+        display_board(stdscr, board)
+        time.sleep(0.1)
+        checked_cells = set()
+        next_board = copy.deepcopy(board)
 
-# If keypress then end
-# If keypress, then save
+        for row_idx, row in enumerate(board):
+            for cell_idx, cell in enumerate(row):
+                if cell:
+                    if check_will_die((cell_idx, row_idx), board):
+                        next_board[row_idx][cell_idx] = False
+                    checked_cells.add((cell_idx, row_idx))
+
+                    babies, barren = check_new_life((cell_idx, row_idx), board, checked_cells)
+                    checked_cells.update(babies)
+                    checked_cells.update(barren)
+
+                    for x, y in babies:
+                        next_board[y][x] = True
+        board = next_board
+
+        keypress = stdscr.getch()
+        # TODO: If "S" or "s" is pressed, then save
+        if keypress != -1:
+            # Currently any key press means exit
+            break
+
+
+if __name__ == '__main__':
+    curses.wrapper(main)
