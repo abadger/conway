@@ -14,14 +14,12 @@ And therefore I did.
 """
 
 # Improvements to make:
-# * Convert from a fixed array for the board size to only populating the live coordinates
 # * GUI setup
 # * GUI output
 # * Load and save patterns from a file
 #
 # Note: This is only if I'm interested ;-)
 
-import copy
 import curses
 import time
 import tracemalloc
@@ -77,10 +75,8 @@ GOSPER = ((1, 5),
 
 def display_board(screen, board):
     screen.clear()
-    for row_idx, row in enumerate(board):
-        for cell_idx, cell in enumerate(row):
-            if cell:
-                screen.addstr(row_idx, cell_idx, ' ', curses.A_REVERSE)
+    for x, y in board:
+        screen.addstr(y, x, ' ', curses.A_REVERSE)
     screen.refresh()
 
 
@@ -91,15 +87,16 @@ def display_board(screen, board):
 def populate_data(board_size, initial_dataset):
     max_x, max_y = board_size
 
-    board = []
-    for dummy in range(0, max_y):
-        row = []
-        for dummy in range(0, max_x):
-            row.append(False)
-        board.append(row)
-
+    board = set()
     for x, y in initial_dataset:
-        board[y][x] = True
+        if x > max_x:
+            raise ValueError(f'dataset contains points ({x}, {y}) greater than the screen\'s'
+                             ' x-axis ({max_x}, {max_y})')
+        if y > max_y:
+            raise ValueError(f'dataset contains points ({x}, {y}) greater than the screen\'s'
+                             ' y-axis ({max_x}, {max_y})')
+
+        board.add((x, y))
 
     return board
 
@@ -108,39 +105,39 @@ def populate_data(board_size, initial_dataset):
 # Checks on the board
 #
 
-def check_will_die(cell, board):
+def check_will_live(cell, board, max_x, max_y):
     x, y = cell
     neighbors = 0
     for x_idx in range(x - 1, x + 2):
-        if (x_idx < 0) or (x_idx > len(board[0]) - 1):
+        if (x_idx < 0) or (x_idx > max_x - 1):
             continue
 
         for y_idx in range(y - 1, y + 2):
-            if (y_idx < 0) or (y_idx > len(board) - 1):
+            if (y_idx < 0) or (y_idx > max_y - 1):
                 continue
 
-            if board[y_idx][x_idx] and (x_idx, y_idx) != cell:
+            if (x_idx, y_idx) in board and (x_idx, y_idx) != cell:
                 neighbors += 1
 
-    if (neighbors < 2) or (neighbors > 3):
+    if neighbors in (2, 3):
         return True
 
     return False
 
 
-def check_new_life(center, board, checked_cells):
+def check_new_life(center, board, checked_cells, max_x, max_y):
     x, y = center
     fertile_areas = set()
 
     for x_idx in range(x - 1, x + 2):
-        if (x_idx < 0) or (x_idx > len(board[0]) - 1):
+        if (x_idx < 0) or (x_idx > max_x - 1):
             continue
 
         for y_idx in range(y - 1, y + 2):
-            if (y_idx < 0) or (y_idx > len(board) - 1):
+            if (y_idx < 0) or (y_idx > max_y - 1):
                 continue
 
-            if (x_idx, y_idx) not in checked_cells and not board[y_idx][x_idx]:
+            if (x_idx, y_idx) not in checked_cells and (x_idx, y_idx) not in board:
                 fertile_areas.add((x_idx, y_idx))
 
     babies = set()
@@ -148,14 +145,14 @@ def check_new_life(center, board, checked_cells):
     for x, y in fertile_areas:
         neighbors = 0
         for x_idx in range(x - 1, x + 2):
-            if (x_idx < 0) or (x_idx > len(board[0]) - 1):
+            if (x_idx < 0) or (x_idx > max_x - 1):
                 continue
 
             for y_idx in range(y - 1, y + 2):
-                if (y_idx < 0) or (y_idx > len(board) - 1):
+                if (y_idx < 0) or (y_idx > max_y - 1):
                     continue
 
-                if board[y_idx][x_idx] and (x_idx, y_idx) != (x, y):
+                if (x_idx, y_idx) in board and (x_idx, y_idx) != (x, y):
                     neighbors += 1
 
         if neighbors == 3:
@@ -164,7 +161,6 @@ def check_new_life(center, board, checked_cells):
             barren.add((x, y))
 
     return babies, barren
-
 
 
 def main(stdscr):
@@ -182,21 +178,19 @@ def main(stdscr):
         display_board(stdscr, board)
         time.sleep(0.1)
         checked_cells = set()
-        next_board = copy.deepcopy(board)
+        next_board = set()
 
-        for row_idx, row in enumerate(board):
-            for cell_idx, cell in enumerate(row):
-                if cell:
-                    if check_will_die((cell_idx, row_idx), board):
-                        next_board[row_idx][cell_idx] = False
-                    checked_cells.add((cell_idx, row_idx))
+        for cell in board:
+            if check_will_live(cell, board, max_x, max_y):
+                next_board.add(cell)
+            checked_cells.add(cell)
 
-                    babies, barren = check_new_life((cell_idx, row_idx), board, checked_cells)
-                    checked_cells.update(babies)
-                    checked_cells.update(barren)
+            babies, barren = check_new_life(cell, board, checked_cells, max_x, max_y)
+            checked_cells.update(babies)
+            checked_cells.update(barren)
 
-                    for x, y in babies:
-                        next_board[y][x] = True
+            next_board.update(babies)
+
         board = next_board
 
         keypress = stdscr.getch()
