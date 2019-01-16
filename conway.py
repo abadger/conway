@@ -24,6 +24,7 @@ And therefore I did.
 import copy
 import curses
 import time
+import tracemalloc
 
 
 #
@@ -206,4 +207,13 @@ def main(stdscr):
 
 
 if __name__ == '__main__':
+    tracemalloc.start()
+    initial_snap = tracemalloc.take_snapshot()
+
     curses.wrapper(main)
+
+    end_snap = tracemalloc.take_snapshot()
+    top_stats = end_snap.compare_to(initial_snap, 'lineno')
+
+    for stat in top_stats[:20]:
+        print(stat)
