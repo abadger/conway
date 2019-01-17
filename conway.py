@@ -70,21 +70,10 @@ GOSPER = ((1, 5),
 
 
 #
-# Display data
+# Initialize data structures
 #
 
-def display_board(screen, board):
-    screen.clear()
-    for x, y in board:
-        screen.addstr(y, x, ' ', curses.A_REVERSE)
-    screen.refresh()
-
-
-#
-# Populate data structures
-#
-
-def populate_data(board_size, initial_dataset):
+def initialize_data(board_size, initial_dataset):
     max_x, max_y = board_size
 
     board = set()
@@ -102,12 +91,24 @@ def populate_data(board_size, initial_dataset):
 
 
 #
+# Display data
+#
+
+def display_board(screen, board):
+    screen.clear()
+    for x, y in board:
+        screen.addstr(y, x, ' ', curses.A_REVERSE)
+    screen.refresh()
+
+
+#
 # Checks on the board
 #
 
-def check_will_live(cell, board, max_x, max_y):
+def find_neighbors(cell, max_x, max_y):
     x, y = cell
-    neighbors = 0
+    neighbors = set()
+
     for x_idx in range(x - 1, x + 2):
         if (x_idx < 0) or (x_idx > max_x - 1):
             continue
@@ -116,10 +117,16 @@ def check_will_live(cell, board, max_x, max_y):
             if (y_idx < 0) or (y_idx > max_y - 1):
                 continue
 
-            if (x_idx, y_idx) in board and (x_idx, y_idx) != cell:
-                neighbors += 1
+            if (x_idx, y_idx) != cell:
+                neighbors.add((x_idx, y_idx))
 
-    if neighbors in (2, 3):
+    return neighbors
+
+
+def check_will_live(cell, board, max_x, max_y):
+    neighbors = find_neighbors(cell, max_x, max_y)
+
+    if len([n for n in neighbors if n in board]) in (2, 3):
         return True
 
     return False
@@ -129,36 +136,19 @@ def check_new_life(center, board, checked_cells, max_x, max_y):
     x, y = center
     fertile_areas = set()
 
-    for x_idx in range(x - 1, x + 2):
-        if (x_idx < 0) or (x_idx > max_x - 1):
-            continue
-
-        for y_idx in range(y - 1, y + 2):
-            if (y_idx < 0) or (y_idx > max_y - 1):
-                continue
-
-            if (x_idx, y_idx) not in checked_cells and (x_idx, y_idx) not in board:
-                fertile_areas.add((x_idx, y_idx))
+    for neighbor in find_neighbors(center, max_x, max_y):
+        if neighbor not in checked_cells and neighbor not in board:
+            fertile_areas.add(neighbor)
 
     babies = set()
     barren = set()
-    for x, y in fertile_areas:
-        neighbors = 0
-        for x_idx in range(x - 1, x + 2):
-            if (x_idx < 0) or (x_idx > max_x - 1):
-                continue
+    for cell in fertile_areas:
+        neighbors = find_neighbors(cell, max_x, max_y)
 
-            for y_idx in range(y - 1, y + 2):
-                if (y_idx < 0) or (y_idx > max_y - 1):
-                    continue
-
-                if (x_idx, y_idx) in board and (x_idx, y_idx) != (x, y):
-                    neighbors += 1
-
-        if neighbors == 3:
-            babies.add((x, y))
+        if len([n for n in neighbors if n in board]) == 3:
+            babies.add(cell)
         else:
-            barren.add((x, y))
+            barren.add(cell)
 
     return babies, barren
 
@@ -169,7 +159,7 @@ def main(stdscr):
     stdscr.nodelay(True)
 
     max_y, max_x = stdscr.getmaxyx()
-    board = populate_data((max_x, max_y), GOSPER)
+    board = initialize_data((max_x, max_y), GOSPER)
 
     #
     # cycle data
