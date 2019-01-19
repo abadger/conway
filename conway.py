@@ -22,6 +22,7 @@ And therefore I did.
 
 import copy
 import curses
+import functools
 import tracemalloc
 
 
@@ -112,6 +113,7 @@ def display_board(screen, board):
 # Checks on the board
 #
 
+@functools.lru_cache()
 def find_neighbors(cell, max_x, max_y):
     x, y = cell
     neighbors = set()
@@ -161,17 +163,20 @@ def main(stdscr):
     #
     for generation in range(0, 1000):
         display_board(stdscr, board)
-        checked_cells = set()
         next_board = copy.deepcopy(board)
+        checked_cells = set()
 
         for y_idx, row in enumerate(board):
             for x_idx, cell in enumerate(row):
                 if cell:
                     if not check_will_live((x_idx, y_idx), board, max_x, max_y):
                         next_board[y_idx][x_idx] = False
-                else:
-                    if check_new_life((x_idx, y_idx), board, max_x, max_y):
-                        next_board[y_idx][x_idx] = True
+                    for neighbor in (n for n in find_neighbors((x_idx, y_idx), max_x, max_y)
+                                     if n not in checked_cells):
+                        if not board[neighbor[1]][neighbor[0]]:
+                            checked_cells.add(neighbor)
+                            if check_new_life(neighbor, board, max_x, max_y):
+                                next_board[neighbor[1]][neighbor[0]] = True
 
         board = next_board
 
