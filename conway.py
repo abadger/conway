@@ -22,7 +22,6 @@ And therefore I did.
 
 import copy
 import curses
-import time
 import tracemalloc
 
 
@@ -160,9 +159,8 @@ def main(stdscr):
     #
     # cycle data
     #
-    while True:
+    for generation in range(0, 1000):
         display_board(stdscr, board)
-        time.sleep(0.1)
         checked_cells = set()
         next_board = copy.deepcopy(board)
 
