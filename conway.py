@@ -80,10 +80,10 @@ def initialize_data(board_size, initial_dataset):
     for x, y in initial_dataset:
         if x > max_x:
             raise ValueError(f'dataset contains points ({x}, {y}) greater than the screen\'s'
-                             ' x-axis ({max_x}, {max_y})')
+                             f' x-axis ({max_x}, {max_y})')
         if y > max_y:
             raise ValueError(f'dataset contains points ({x}, {y}) greater than the screen\'s'
-                             ' y-axis ({max_x}, {max_y})')
+                             f' y-axis ({max_x}, {max_y})')
 
         board.add((x, y))
 
