@@ -21,7 +21,6 @@ And therefore I did.
 # Note: This is only if I'm interested ;-)
 
 import curses
-import functools
 import tracemalloc
 
 
@@ -105,7 +104,6 @@ def display_board(screen, board):
 # Checks on the board
 #
 
-@functools.lru_cache()
 def find_neighbors(cell, max_x, max_y):
     x, y = cell
     neighbors = set()
@@ -133,12 +131,12 @@ def check_will_live(cell, board, max_x, max_y):
     return False
 
 
-def check_new_life(center, board, checked_cells, max_x, max_y):
+def check_new_life(center, board, max_x, max_y):
     x, y = center
     fertile_areas = set()
 
     for neighbor in find_neighbors(center, max_x, max_y):
-        if neighbor not in checked_cells and neighbor not in board:
+        if neighbor not in board:
             fertile_areas.add(neighbor)
 
     babies = set()
@@ -167,17 +165,13 @@ def main(stdscr):
     #
     for generation in range(0, 1000):
         display_board(stdscr, board)
-        checked_cells = set()
         next_board = set()
 
         for cell in board:
             if check_will_live(cell, board, max_x, max_y):
                 next_board.add(cell)
-            checked_cells.add(cell)
 
-            babies, barren = check_new_life(cell, board, checked_cells, max_x, max_y)
-            checked_cells.update(babies)
-            checked_cells.update(barren)
+            babies, barren = check_new_life(cell, board, max_x, max_y)
 
             next_board.update(babies)
 
