@@ -20,6 +20,7 @@ And therefore I did.
 #
 # Note: This is only if I'm interested ;-)
 
+import copy
 import curses
 import time
 import tracemalloc
@@ -76,16 +77,21 @@ GOSPER = ((1, 5),
 def initialize_data(board_size, initial_dataset):
     max_x, max_y = board_size
 
-    board = set()
-    for x, y in initial_dataset:
-        if x > max_x:
-            raise ValueError(f'dataset contains points ({x}, {y}) greater than the screen\'s'
-                             ' x-axis ({max_x}, {max_y})')
-        if y > max_y:
-            raise ValueError(f'dataset contains points ({x}, {y}) greater than the screen\'s'
-                             ' y-axis ({max_x}, {max_y})')
+    board = []
+    used_cells = set()
+    for y in range(0, max_y):
+        row = []
+        for x in range(0, max_x):
+            if (x, y) in initial_dataset:
+                row.append(True)
+                used_cells.add((x, y))
+            else:
+                row.append(False)
+        board.append(row)
 
-        board.add((x, y))
+    if used_cells.symmetric_difference(initial_dataset):
+        raise ValueError(f'dataset contains points outside of the screen size'
+                         f' ({max_x}, {max_y})')
 
     return board
 
@@ -96,8 +102,10 @@ def initialize_data(board_size, initial_dataset):
 
 def display_board(screen, board):
     screen.clear()
-    for x, y in board:
-        screen.addstr(y, x, ' ', curses.A_REVERSE)
+    for y_idx, row in enumerate(board):
+        for x_idx, cell in enumerate(row):
+            if cell:
+                screen.addstr(y_idx, x_idx, ' ', curses.A_REVERSE)
     screen.refresh()
 
 
@@ -126,31 +134,19 @@ def find_neighbors(cell, max_x, max_y):
 def check_will_live(cell, board, max_x, max_y):
     neighbors = find_neighbors(cell, max_x, max_y)
 
-    if len([n for n in neighbors if n in board]) in (2, 3):
+    if len([True for x, y in neighbors if board[y][x]]) in (2, 3):
         return True
 
     return False
 
 
-def check_new_life(center, board, checked_cells, max_x, max_y):
-    x, y = center
-    fertile_areas = set()
+def check_new_life(cell, board, max_x, max_y):
+    neighbors = find_neighbors(cell, max_x, max_y)
 
-    for neighbor in find_neighbors(center, max_x, max_y):
-        if neighbor not in checked_cells and neighbor not in board:
-            fertile_areas.add(neighbor)
+    if len([True for x, y in neighbors if board[y][x]]) == 3:
+        return True
 
-    babies = set()
-    barren = set()
-    for cell in fertile_areas:
-        neighbors = find_neighbors(cell, max_x, max_y)
-
-        if len([n for n in neighbors if n in board]) == 3:
-            babies.add(cell)
-        else:
-            barren.add(cell)
-
-    return babies, barren
+    return False
 
 
 def main(stdscr):
@@ -168,18 +164,16 @@ def main(stdscr):
         display_board(stdscr, board)
         time.sleep(0.1)
         checked_cells = set()
-        next_board = set()
+        next_board = copy.deepcopy(board)
 
-        for cell in board:
-            if check_will_live(cell, board, max_x, max_y):
-                next_board.add(cell)
-            checked_cells.add(cell)
-
-            babies, barren = check_new_life(cell, board, checked_cells, max_x, max_y)
-            checked_cells.update(babies)
-            checked_cells.update(barren)
-
-            next_board.update(babies)
+        for y_idx, row in enumerate(board):
+            for x_idx, cell in enumerate(row):
+                if cell:
+                    if not check_will_live((x_idx, y_idx), board, max_x, max_y):
+                        next_board[y_idx][x_idx] = False
+                else:
+                    if check_new_life((x_idx, y_idx), board, max_x, max_y):
+                        next_board[y_idx][x_idx] = True
 
         board = next_board
 
