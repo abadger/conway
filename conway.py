@@ -21,6 +21,7 @@ And therefore I did.
 # Note: This is only if I'm interested ;-)
 
 import curses
+import functools
 import time
 import tracemalloc
 
@@ -105,6 +106,7 @@ def display_board(screen, board):
 # Checks on the board
 #
 
+@functools.lru_cache()
 def find_neighbors(cell, max_x, max_y):
     x, y = cell
     neighbors = set()
