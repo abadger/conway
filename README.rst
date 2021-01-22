@@ -82,14 +82,14 @@ known to be empty.  This reduces the memory usage in addition to reducing the nu
 have to check.
 
 
-Master: Only checking cell changes once per iteration
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Main: Only checking cell changes once per iteration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 | /usr/bin/time -p output: real real 4.28
 | cloc output:             120 code lines
 |
 
-The ``master`` branch is a small optimization of ``gridless``. In ``gridless``, we performed checks
+The ``main`` branch is a small optimization of ``gridless``. In ``gridless``, we performed checks
 by running through the populated cells and checking both them and the cells which neighbored them.
-In ``master``, we add the tweak of not checking a neighboring cell more than once.  That way if an
+In ``main``, we add the tweak of not checking a neighboring cell more than once.  That way if an
 empty cell is bordered by multiple other cells, we do not process it multiple times.
